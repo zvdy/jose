@@ -27,7 +27,7 @@ jobs:
           - ubuntu:rolling
           - ubuntu:jammy
           - ubuntu:focal
-        stable:: [true]
+        stable: [true]
         include:
           - compiler: gcc
             os: quay.io/fedora/fedora:rawhide
@@ -54,27 +54,21 @@ jobs:
       - name: Build jose
         run: |
           mkdir -p build && cd build
-          export ninja=$(command -v ninja)
-          [ -z "${ninja}" ] && export ninja=$(command -v ninja-build)
-          meson setup .. || cat meson-logs/meson-log.txt >&2
-          ${ninja}
+          cmake .. -DCMAKE_BUILD_TYPE=Release || cat CMakeFiles/CMakeError.log >&2
+          make
 
       - name: Run tests
         run: |
           cd build
-          if ! meson test; then
-            cat meson-logs/testlog.txt >&2
-            exit -1
-          fi
+          ctest --output-on-failure
 
-      - name: Show full test logs
+      - name: Show package config
         run: |
-          if [ -r build/meson-logs/testlog.txt ]; then
-            cat build/meson-logs/testlog.txt >&2
+          if [ -r build/jose.pc ]; then
+            cat build/jose.pc
           else
-            echo "No test log available" >&2
+            echo "No pkg-config file available" >&2
           fi
-          cat build/meson-private/jose.pc
 
     container:
       image: ${{matrix.os}}
@@ -102,27 +96,21 @@ jobs:
       - name: Build jose
         run: |
           mkdir -p build && cd build
-          export ninja=$(command -v ninja)
-          [ -z "${ninja}" ] && export ninja=$(command -v ninja-build)
-          CFLAGS=-I$(brew --prefix openssl)/include LDFLAGS=-L$(brew --prefix openssl)/lib PKG_CONFIG_PATH=$(brew --prefix openssl)/lib/pkgconfig meson setup .. || cat meson-logs/meson-log.txt >&2
-          ${ninja}
+          CFLAGS="-I$(brew --prefix openssl)/include" LDFLAGS="-L$(brew --prefix openssl)/lib" PKG_CONFIG_PATH="$(brew --prefix openssl)/lib/pkgconfig" cmake .. -DCMAKE_BUILD_TYPE=Release || cat CMakeFiles/CMakeError.log >&2
+          make
 
       - name: Run tests
         run: |
           cd build
-          if ! meson test; then
-            cat meson-logs/testlog.txt >&2
-            exit -1
-          fi
+          ctest --output-on-failure
 
-      - name: Show full test logs
+      - name: Show package config
         run: |
-          if [ -r build/meson-logs/testlog.txt ]; then
-            cat build/meson-logs/testlog.txt >&2
+          if [ -r build/jose.pc ]; then
+            cat build/jose.pc
           else
-            echo "No test log available" >&2
+            echo "No pkg-config file available" >&2
           fi
-          cat build/meson-private/jose.pc
 
     env:
       DISTRO: osx:macos-latest

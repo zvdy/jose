@@ -1,51 +1,85 @@
-#!/bin/sh -ex
+#!/bin/bash
 
-COMMON="meson curl git file bzip2 asciidoc jq ${CC}"
+set -ex
 
-case "${DISTRO}" in
-osx:*)
+# Helper function to check if command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Fedora/RHEL/CentOS
+if command_exists dnf; then
+    dnf -y upgrade
+    dnf -y install \
+        cmake \
+        gcc \
+        clang \
+        git \
+        jansson-devel \
+        jq \
+        openssl-devel \
+        pkgconf \
+        zlib-devel \
+        make \
+        asciidoc \
+        coreutils \
+        findutils
+
+# Debian/Ubuntu
+elif command_exists apt-get; then
+    apt-get update
+    apt-get -y install \
+        build-essential \
+        cmake \
+        clang \
+        pkg-config \
+        libjansson-dev \
+        jq \
+        libssl-dev \
+        zlib1g-dev \
+        git \
+        asciidoc \
+        coreutils \
+        findutils
+
+# macOS via brew
+elif command_exists brew; then
     brew update
-    for pkg in pkg-config jansson openssl zlib meson; do
-        brew ls --versions "${pkg}" || brew install "${pkg}"
-        brew outdated "${pkg}" || brew upgrade "${pkg}" || true
-    done
-    ;;
+    brew install \
+        cmake \
+        pkg-config \
+        jansson \
+        jq \
+        openssl \
+        asciidoc \
+        findutils
+    
+    # Make sure findutils is in PATH
+    export PATH="$(brew --prefix)/opt/findutils/libexec/gnubin:$PATH"
 
-debian:*|ubuntu:*)
-    export DEBIAN_FRONTEND=noninteractive
-    apt clean
-    apt update
-    # We get some errors once in a while, so let's try a few times.
-    for i in 1 2 3; do
-        apt -y install build-essential pkg-config libssl-dev zlib1g-dev \
-                       libjansson-dev ${COMMON} && break
-        sleep 5
-    done
-    ;;
+else
+    echo "Unsupported distribution" >&2
+    exit 1
+fi
 
-*fedora:*)
-    echo 'max_parallel_downloads=10' >> /etc/dnf/dnf.conf
-    dnf -y clean all
-    dnf -y --setopt=deltarpm=0 update
-    dnf -y install ${COMMON} pkgconfig openssl-devel zlib-devel jansson-devel
-    ;;
+# Let me make sure we have the expected compiler working
+if [ "$CC" == "gcc" ] && ! command_exists gcc; then
+    echo "Installing gcc" >&2
+    if command_exists apt-get; then
+        apt-get -y install gcc
+    elif command_exists dnf; then
+        dnf -y install gcc
+    fi
+elif [ "$CC" == "clang" ] && ! command_exists clang; then
+    echo "Installing clang" >&2
+    if command_exists apt-get; then
+        apt-get -y install clang
+    elif command_exists dnf; then
+        dnf -y install clang
+    fi
+fi
 
-centos:7)
-    yum -y clean all
-    yum -y --setopt=deltarpm=0 update
-    yum install -y yum-utils epel-release centos-release-scl llvm-toolset-7
-    yum -y install ${COMMON}
-    yum-builddep -y jose
-    ;;
-
-*centos:stream*)
-    dnf -y clean all
-    dnf -y --allowerasing --setopt=deltarpm=0 update
-    dnf install -y yum-utils epel-release
-    dnf config-manager -y --set-enabled crb \
-        || dnf config-manager -y --set-enabled powertools || :
-    dnf -y --allowerasing install ${COMMON}
-    dnf builddep -y jose
-    ;;
-esac
+# Make sure we have right file permissions
+chmod -R a+rX .
+```
 # vim: set ts=8 shiftwidth=4 softtabstop=4 expandtab smarttab colorcolumn=80:
