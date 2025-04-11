@@ -110,27 +110,37 @@ Decryption failed!
 ```
 
 # Building and Installing from Source
-Building Jose is fairly straightforward:
+Building Jose is fairly straightforward with CMake:
 
-    $ mkdir build && cd build
-    $ meson setup .. --prefix=/usr
-    $ ninja
-    $ sudo ninja install
+```sh
+$ mkdir build && cd build
+$ cmake ..
+$ make
+$ sudo make install
+```
 
 You can even run the tests if you'd like:
 
-    $ meson test
+```sh
+$ cd build
+$ ctest
+```
 
 To build a FreeBSD, HardenedBSD or OPNsense package
 use:
 
-    (as root) # pkg install meson pkgconf jansson openssl asciidoc jq
+```sh
+# Install dependencies
+(as root) # pkg install cmake pkgconf jansson openssl asciidoc jq
 
-    $ mkdir build && cd build
-    $ meson setup .. --prefix=/usr/local
-    $ ninja
-    $ meson test
-    (as root) # ninja install
+# Build the project
+$ mkdir build && cd build
+$ cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local
+$ make
+$ make test
 
-Once built it does not require meson and pkgconf,
-but still requires jansson and openssl.
+# Install
+(as root) # make install
+```
+
+Once built it requires jansson and openssl for runtime.
